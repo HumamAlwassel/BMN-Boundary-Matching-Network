@@ -5,6 +5,7 @@ import json
 import torch.utils.data as data
 import torch
 from utils import ioa_with_anchors, iou_with_anchors
+import h5py
 
 
 def load_json(file):
@@ -50,9 +51,9 @@ class VideoDataSet(data.Dataset):
 
     def _load_file(self, index):
         video_name = self.video_list[index]
-        video_df = pd.read_csv(self.feature_path + "csv_mean_" + str(self.temporal_scale) + "/" + video_name + ".csv")
-        video_data = video_df.values[:, :]
-        video_data = torch.Tensor(video_data)
+        features_h5 = h5py.File(self.feature_path, 'r')
+        video_data = torch.Tensor(features_h5[video_name][()])
+        features_h5.close()
         video_data = torch.transpose(video_data, 0, 1)
         video_data.float()
         return video_data

@@ -205,11 +205,11 @@ class ANETproposal(object):
                 max_avg_nr_proposals=self.max_avg_nr_proposals,
                 tiou_thresholds=self.tiou_thresholds)
 
-        area_under_curve = np.trapz(avg_recall, proposals_per_video)
+        self.auc = np.trapz(avg_recall, proposals_per_video)/proposals_per_video[-1]
 
         if self.verbose:
             print('[RESULTS] Performance on ActivityNet proposal task.')
-            print('\tArea Under the AR vs AN curve: {}%'.format(100.*float(area_under_curve)/proposals_per_video[-1]))
+            print('\tArea Under the AR vs AN curve: {}%'.format(100.*self.auc))
 
         self.recall = recall
         self.avg_recall = avg_recall

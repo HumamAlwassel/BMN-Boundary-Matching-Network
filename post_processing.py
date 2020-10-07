@@ -76,7 +76,7 @@ def soft_nms(df, alpha, t1, t2):
 
 def video_post_process(opt, video_list, video_dict):
     for video_name in video_list:
-        df = pd.read_csv("./output/BMN_results/" + video_name + ".csv")
+        df = pd.read_csv(opt["output"]+"/BMN_results/" + video_name + ".csv")
 
         if len(df) > 1:
             snms_alpha = opt["soft_nms_alpha"]
@@ -122,7 +122,7 @@ def BMN_post_processing(opt):
 
     result_dict = dict(result_dict)
     output_dict = {"version": "VERSION 1.3", "results": result_dict, "external_data": {}}
-    outfile = open(opt["result_file"], "w")
+    outfile = open(opt["output"]+'/'+opt["result_file"], "w")
     json.dump(output_dict, outfile)
     outfile.close()
 

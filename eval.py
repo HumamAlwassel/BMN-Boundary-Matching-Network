@@ -1,26 +1,10 @@
 # -*- coding: utf-8 -*-
-import sys
+import sys, os
 sys.path.append('./Evaluation')
 from eval_proposal import ANETproposal
+from eval_detection import ANETdetection
 import matplotlib.pyplot as plt
 import numpy as np
-
-def run_evaluation(ground_truth_filename, proposal_filename, 
-                   max_avg_nr_proposals=100, 
-                   tiou_thresholds=np.linspace(0.5, 0.95, 10),
-                   subset='validation'):
-
-    anet_proposal = ANETproposal(ground_truth_filename, proposal_filename,
-                                 tiou_thresholds=tiou_thresholds,
-                                 max_avg_nr_proposals=max_avg_nr_proposals,
-                                 subset=subset, verbose=True, check_status=False)
-    anet_proposal.evaluate()
-    
-    recall = anet_proposal.recall
-    average_recall = anet_proposal.avg_recall
-    average_nr_proposals = anet_proposal.proposals_per_video
-    
-    return (average_nr_proposals, average_recall, recall)
 
 def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_thresholds=np.linspace(0.5, 0.95, 10)):
 
@@ -52,19 +36,47 @@ def plot_metric(opt,average_nr_proposals, average_recall, recall, tiou_threshold
     plt.setp(plt.axes().get_xticklabels(), fontsize=fn_size)
     plt.setp(plt.axes().get_yticklabels(), fontsize=fn_size)
     #plt.show()    
-    plt.savefig(opt["save_fig_path"])
+    plt.savefig(opt['output']+'/'+opt["save_fig_path"])
+
 
 def evaluation_proposal(opt):
-    
-    uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid = run_evaluation(
-        "./Evaluation/data/activity_net_1_3_new.json",
-        opt["result_file"],
-        max_avg_nr_proposals=100,
-        tiou_thresholds=np.linspace(0.5, 0.95, 10),
-        subset='validation')
-    
-    plot_metric(opt,uniform_average_nr_proposals_valid, uniform_average_recall_valid, uniform_recall_valid)
-    print( "AR@1 is \t",np.mean(uniform_recall_valid[:,0]))
-    print( "AR@5 is \t",np.mean(uniform_recall_valid[:,4]))
-    print( "AR@10 is \t",np.mean(uniform_recall_valid[:,9]))
-    print( "AR@100 is \t",np.mean(uniform_recall_valid[:,-1]))
+    app = ANETproposal(ground_truth_filename="./Evaluation/data/activity_net_1_3_new.json",
+                        proposal_filename=os.path.join(opt['output'], opt["result_file"]),
+                        tiou_thresholds=np.linspace(0.5, 0.95, 10),
+                        max_avg_nr_proposals=100,
+                        subset='validation', verbose=True, check_status=False)
+    app.evaluate()
+    parent_path, run_id = os.path.split(os.path.normpath(opt['output']))
+    results = (f'[{run_id}|Proposals]'
+               f' AUC {app.auc*100:.3f}'
+               f' AR@1 {np.mean(app.recall[:,0])*100:.3f}'
+               f' AR@5 {np.mean(app.recall[:,4])*100:.3f}'
+               f' AR@10 {np.mean(app.recall[:,9])*100:.3f}'
+               f' AR@100 {np.mean(app.recall[:,-1])*100:.3f}')
+    print(results)
+    with open(os.path.join(parent_path, 'results.txt'), 'a') as fobj:
+        fobj.write(f'{results}\n')
+
+    #plot_metric(opt, app.proposals_per_video, app.avg_recall, app.recall)
+
+def evaluation_detection(opt):
+    app = ANETdetection(ground_truth_filename="./Evaluation/data/activity_net_1_3_new.json",
+                        prediction_filename=os.path.join(opt['output'], "result_detect_cuhk_100_t1.json"),
+                        subset='validation', verbose=True, check_status=False)
+    app.evaluate()
+    parent_path, run_id = os.path.split(os.path.normpath(opt['output']))
+    mAP_at_tIoU = [f'mAP@{t:.2f} {mAP*100:.3f}' for t, mAP in zip(app.tiou_thresholds, app.mAP)]
+    results = f'[{run_id}|Detection] average-mAP {app.average_mAP*100:.3f} {" ".join(mAP_at_tIoU)}'
+    print(results)
+    with open(os.path.join(parent_path, 'results.txt'), 'a') as fobj:
+        fobj.write(f'{results}\n')
+
+def evaluation_detection_testset():
+    app = ANETdetection(ground_truth_filename="./activity_net_test.v1-3.min.json",
+                        prediction_filename="./output/result_detect_cuhk_100_t1.json",
+                        subset='test', verbose=True, check_status=False)
+
+    app.evaluate()
+
+if __name__ == "__main__":
+    evaluation_detection_testset()
